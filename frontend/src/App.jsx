@@ -7,6 +7,7 @@ import Teachers from "./pages/Teachers";
 import Assignments from "./pages/Assignments";
 import Students from "./pages/Students";
 import TakeAttendance from "./pages/TakeAttendance";
+import Attendance from "./pages/Attendance";
 
 function ProtectedRoute({ children, allowedRole }) {
   const token = localStorage.getItem("token");
@@ -77,6 +78,14 @@ function App() {
               <ProtectedRoute>
                  <TakeAttendance />
               </ProtectedRoute>
+            }
+         />
+         <Route
+           path="/attendance"
+           element={
+             <ProtectedRoute>
+               <Attendance />
+            </ProtectedRoute>
             }
          />
         <Route path="*" element={<Navigate to="/" replace />} />
