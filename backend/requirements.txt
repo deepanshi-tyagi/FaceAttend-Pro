@@ -1,0 +1,10 @@
+flask
+flask-cors
+flask-sqlalchemy
+flask-jwt-extended
+werkzeug
+opencv-python
+opencv-contrib-python
+numpy
+pillow
+reportlab

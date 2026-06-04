@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+env/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Local face data
+backend/dataset/
+backend/trainer/
+
+# Env
+.env
+
+# React
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+
+# System
+.vscode/
+.DS_Store
+Thumbs.db
