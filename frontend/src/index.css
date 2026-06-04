@@ -418,3 +418,22 @@ body {
   border-radius: 12px;
   color: #334155;
 }
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.secondary-btn {
+  border: none;
+  background: #475569;
+  color: white;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.secondary-btn:hover {
+  background: #334155;
+}

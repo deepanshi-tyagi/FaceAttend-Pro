@@ -97,6 +97,43 @@ function Students() {
       setMessage(error.response?.data?.message || "Unable to delete student.");
     }
   }
+   async function handleCaptureFace(studentId) {
+  const confirmCapture = window.confirm(
+    "Camera will open and capture face data for this student. Continue?"
+  );
+
+  if (!confirmCapture) return;
+
+  setMessage("Opening camera for face capture...");
+
+  try {
+    const response = await api.post(`/api/capture-face/${studentId}`);
+    setMessage(
+      `${response.data.message} Images captured: ${response.data.images_captured}`
+    );
+  } catch (error) {
+    setMessage(error.response?.data?.message || "Unable to capture face data.");
+  }
+}
+
+async function handleTrainModel() {
+  const confirmTrain = window.confirm(
+    "Train face recognition model using captured face data?"
+  );
+
+  if (!confirmTrain) return;
+
+  setMessage("Training model. Please wait...");
+
+  try {
+    const response = await api.post("/api/train-model");
+    setMessage(
+      `${response.data.message} Faces trained: ${response.data.faces_trained}`
+    );
+  } catch (error) {
+    setMessage(error.response?.data?.message || "Unable to train model.");
+  }
+}
 
   return (
     <Layout role={user?.role}>
@@ -112,6 +149,19 @@ function Students() {
       </div>
 
       {message && <div className="alert info-alert">{message}</div>}
+
+      {user?.role === "admin" && (
+       <div className="section-card">
+        <h2>Face Recognition Training</h2>
+        <p style={{ color: "#64748b", marginBottom: "16px" }}>
+        Capture student face data first, then train the recognition model.
+        </p>
+
+      <button className="primary-btn" onClick={handleTrainModel}>
+       Train Face Recognition Model
+        </button>
+         </div>
+         )}
 
       {user?.role === "admin" && (
         <div className="section-card">
@@ -238,17 +288,25 @@ function Students() {
                       {student.attendance_percentage}%
                     </span>
                   </td>
+                    {user?.role === "admin" && (
+                       <td>
+                        <div className="action-buttons">
+                          <button
+                           className="secondary-btn"
+                           onClick={() => handleCaptureFace(student.student_id)}
+                          >
+                            Capture Face
+                          </button>
 
-                  {user?.role === "admin" && (
-                    <td>
-                      <button
-                        className="danger-btn"
-                        onClick={() => handleDelete(student.id)}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  )}
+                          <button
+                            className="danger-btn"
+                            onClick={() => handleDelete(student.id)}
+                           >
+                            Delete
+                          </button>
+                        </div>
+                     </td>
+                    )}
                 </tr>
               ))}
             </tbody>
