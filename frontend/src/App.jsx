@@ -5,6 +5,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import Teachers from "./pages/Teachers";
 import Assignments from "./pages/Assignments";
+import Students from "./pages/Students";
 
 function ProtectedRoute({ children, allowedRole }) {
   const token = localStorage.getItem("token");
@@ -61,6 +62,14 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+           path="/students"
+           element={
+              <ProtectedRoute>
+                <Students />
+              </ProtectedRoute>
+            }
+          />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
