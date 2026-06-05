@@ -182,3 +182,28 @@
     border-right-color: var(--border);
   }
 }
+.status-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.present-btn,
+.absent-btn {
+  border: none;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.present-btn.active {
+  background: #16a34a;
+  color: white;
+}
+
+.absent-btn.active {
+  background: #dc2626;
+  color: white;
+}

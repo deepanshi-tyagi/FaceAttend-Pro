@@ -879,7 +879,7 @@ def get_attendance_records():
         "attendance": attendance_list
     }), 200
 
-    @app.route("/api/manual-attendance/students", methods=["POST"])
+@app.route("/api/manual-attendance/students", methods=["POST"])
 @jwt_required()
 def get_manual_attendance_students():
     user_id = int(get_jwt_identity())
@@ -951,6 +951,99 @@ def get_manual_attendance_students():
         },
         "students": student_list
     }), 200
+
+@app.route("/api/manual-attendance/save", methods=["POST"])
+@jwt_required()
+def save_manual_attendance():
+    user_id = int(get_jwt_identity())
+    claims = get_jwt()
+    role = claims.get("role")
+
+    data = request.get_json()
+
+    assignment_id = data.get("assignment_id")
+    lecture_no = data.get("lecture_no", "").strip()
+    attendance_data = data.get("attendance", [])
+
+    if not assignment_id or not lecture_no or not attendance_data:
+        return jsonify({
+            "success": False,
+            "message": "Class, lecture, and attendance data are required."
+        }), 400
+
+    assignment = TeacherAssignment.query.get(assignment_id)
+
+    if not assignment:
+        return jsonify({
+            "success": False,
+            "message": "Assignment not found."
+        }), 404
+
+    if role == "teacher" and assignment.teacher_id != user_id:
+        return jsonify({
+            "success": False,
+            "message": "Access denied. You are not assigned to this class."
+        }), 403
+
+    from datetime import datetime
+    today = datetime.now().strftime("%Y-%m-%d")
+    current_time = datetime.now().strftime("%H:%M:%S")
+
+    teacher_id = assignment.teacher_id if role == "admin" else user_id
+
+    saved_count = 0
+
+    for item in attendance_data:
+        student_id = str(item.get("student_id"))
+        status = item.get("status", "Absent")
+
+        if status not in ["Present", "Absent"]:
+            status = "Absent"
+
+        student = Student.query.filter_by(student_id=student_id).first()
+
+        if not student:
+            continue
+
+        if (
+            student.branch.strip().lower() != assignment.branch.strip().lower()
+            or student.section.strip().lower() != assignment.section.strip().lower()
+        ):
+            continue
+
+        existing_record = Attendance.query.filter_by(
+            student_id=student_id,
+            subject=assignment.subject,
+            lecture_no=lecture_no,
+            date=today
+        ).first()
+
+        if existing_record:
+            existing_record.status = status
+            existing_record.time = current_time
+            existing_record.teacher_id = teacher_id
+        else:
+            record = Attendance(
+                student_id=student_id,
+                teacher_id=teacher_id,
+                subject=assignment.subject,
+                lecture_no=lecture_no,
+                date=today,
+                time=current_time,
+                status=status
+            )
+
+            db.session.add(record)
+
+        saved_count += 1
+
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": "Manual attendance saved successfully.",
+        "saved_count": saved_count
+    }), 200    
 
 if __name__ == "__main__":
     with app.app_context():

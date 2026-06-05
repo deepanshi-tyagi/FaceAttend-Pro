@@ -31,6 +31,7 @@ function Layout({ role, children }) {
           )}
 
           <Link to="/take-attendance">Take Attendance</Link>
+          <Link to="/manual-attendance">Manual Attendance</Link>
         </nav>
 
         <div className="user-box">
