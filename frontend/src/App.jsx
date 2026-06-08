@@ -9,6 +9,7 @@ import Students from "./pages/Students";
 import TakeAttendance from "./pages/TakeAttendance";
 import Attendance from "./pages/Attendance";
 import ManualAttendance from "./pages/ManualAttendance";
+import ChangePassword from "./pages/ChangePassword";
 
 function ProtectedRoute({ children, allowedRole }) {
   const token = localStorage.getItem("token");
@@ -103,6 +104,14 @@ function App() {
           }
         />
 
+        <Route
+          path="/change-password"
+          element={
+            <ProtectedRoute>
+             <ChangePassword />
+            </ProtectedRoute>
+           }
+       />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

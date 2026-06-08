@@ -1252,6 +1252,57 @@ def update_teacher(teacher_id):
         }
     }), 200
 
+@app.route("/api/change-password", methods=["PUT"])
+@jwt_required()
+def change_password():
+    user_id = int(get_jwt_identity())
+
+    data = request.get_json()
+
+    old_password = data.get("old_password", "").strip()
+    new_password = data.get("new_password", "").strip()
+    confirm_password = data.get("confirm_password", "").strip()
+
+    if not old_password or not new_password or not confirm_password:
+        return jsonify({
+            "success": False,
+            "message": "Old password, new password, and confirm password are required."
+        }), 400
+
+    if new_password != confirm_password:
+        return jsonify({
+            "success": False,
+            "message": "New password and confirm password do not match."
+        }), 400
+
+    if len(new_password) < 6:
+        return jsonify({
+            "success": False,
+            "message": "New password must be at least 6 characters long."
+        }), 400
+
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({
+            "success": False,
+            "message": "User not found."
+        }), 404
+
+    if not user.check_password(old_password):
+        return jsonify({
+            "success": False,
+            "message": "Old password is incorrect."
+        }), 401
+
+    user.set_password(new_password)
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": "Password changed successfully. Please login again."
+    }), 200
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()

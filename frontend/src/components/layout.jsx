@@ -58,6 +58,10 @@ function Layout({ role, children }) {
           <Link className={isActive("/manual-attendance")} to="/manual-attendance">
             Manual Attendance
           </Link>
+
+          <Link className={isActive("/change-password")} to="/change-password">
+            Change Password
+          </Link> 
         </nav>
 
         <div className="user-box">
