@@ -437,3 +437,20 @@ body {
 .secondary-btn:hover {
   background: #334155;
 }
+.edit-card {
+  border-left: 5px solid #2563eb;
+}
+
+.edit-btn {
+  border: none;
+  background: #2563eb;
+  color: white;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.edit-btn:hover {
+  background: #1d4ed8;
+}

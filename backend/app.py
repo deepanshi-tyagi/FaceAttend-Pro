@@ -1112,6 +1112,146 @@ def export_attendance_csv():
 
     return response  
 
+@app.route("/api/students/<int:id>", methods=["PUT"])
+@jwt_required()
+def update_student(id):
+    if not require_admin():
+        return jsonify({
+            "success": False,
+            "message": "Admin access required."
+        }), 403
+
+    student = Student.query.get(id)
+
+    if not student:
+        return jsonify({
+            "success": False,
+            "message": "Student not found."
+        }), 404
+
+    data = request.get_json()
+
+    student_id = data.get("student_id", "").strip()
+    name = data.get("name", "").strip()
+    branch = data.get("branch", "").strip()
+    section = data.get("section", "").strip()
+    email = data.get("email", "").strip()
+    phone = data.get("phone", "").strip()
+
+    if not student_id or not name or not branch or not section:
+        return jsonify({
+            "success": False,
+            "message": "Student ID, name, branch, and section are required."
+        }), 400
+
+    existing_student = Student.query.filter(
+        Student.student_id == student_id,
+        Student.id != id
+    ).first()
+
+    if existing_student:
+        return jsonify({
+            "success": False,
+            "message": "Student ID already exists."
+        }), 409
+
+    old_student_id = student.student_id
+
+    student.student_id = student_id
+    student.name = name
+    student.branch = branch
+    student.section = section
+    student.email = email
+    student.phone = phone
+
+    if old_student_id != student_id:
+        attendance_records = Attendance.query.filter_by(
+            student_id=old_student_id
+        ).all()
+
+        for record in attendance_records:
+            record.student_id = student_id
+
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": "Student updated successfully.",
+        "student": {
+            "id": student.id,
+            "student_id": student.student_id,
+            "name": student.name,
+            "branch": student.branch,
+            "section": student.section,
+            "email": student.email,
+            "phone": student.phone
+        }
+    }), 200
+
+@app.route("/api/teachers/<int:teacher_id>", methods=["PUT"])
+@jwt_required()
+def update_teacher(teacher_id):
+    if not require_admin():
+        return jsonify({
+            "success": False,
+            "message": "Admin access required."
+        }), 403
+
+    teacher = User.query.filter_by(id=teacher_id, role="teacher").first()
+
+    if not teacher:
+        return jsonify({
+            "success": False,
+            "message": "Teacher not found."
+        }), 404
+
+    data = request.get_json()
+
+    name = data.get("name", "").strip()
+    email = data.get("email", "").strip()
+    username = data.get("username", "").strip()
+    department = data.get("department", "").strip()
+    password = data.get("password", "").strip()
+
+    if not name or not email or not username:
+        return jsonify({
+            "success": False,
+            "message": "Name, email, and username are required."
+        }), 400
+
+    existing_user = User.query.filter(
+        ((User.email == email) | (User.username == username)),
+        User.id != teacher_id
+    ).first()
+
+    if existing_user:
+        return jsonify({
+            "success": False,
+            "message": "Email or username already exists."
+        }), 409
+
+    teacher.name = name
+    teacher.email = email
+    teacher.username = username
+    teacher.department = department
+
+    if password:
+        teacher.set_password(password)
+
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": "Teacher updated successfully.",
+        "teacher": {
+            "id": teacher.id,
+            "name": teacher.name,
+            "email": teacher.email,
+            "username": teacher.username,
+            "department": teacher.department
+        }
+    }), 200
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
