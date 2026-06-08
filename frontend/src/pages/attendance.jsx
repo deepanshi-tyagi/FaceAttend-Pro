@@ -47,6 +47,56 @@ function Attendance() {
     setFilteredRecords(filtered);
   }
 
+  async function handleExportCSV() {
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await api.get("/api/export-attendance-csv", {
+        responseType: "blob",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const fileURL = window.URL.createObjectURL(new Blob([response.data]));
+      const fileLink = document.createElement("a");
+
+      fileLink.href = fileURL;
+      fileLink.setAttribute("download", "attendance_report.csv");
+
+      document.body.appendChild(fileLink);
+      fileLink.click();
+      fileLink.remove();
+    } catch (error) {
+      setMessage("Unable to export CSV.");
+    }
+  }
+
+  async function handleExportPDF() {
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await api.get("/api/export-attendance-pdf", {
+        responseType: "blob",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const fileURL = window.URL.createObjectURL(new Blob([response.data]));
+      const fileLink = document.createElement("a");
+
+      fileLink.href = fileURL;
+      fileLink.setAttribute("download", "attendance_report.pdf");
+
+      document.body.appendChild(fileLink);
+      fileLink.click();
+      fileLink.remove();
+    } catch (error) {
+      setMessage("Unable to export PDF.");
+    }
+  }
+
   return (
     <Layout role={user?.role}>
       <div className="page-header">
@@ -67,6 +117,16 @@ function Attendance() {
           <div>
             <h2>Attendance Logs</h2>
             <p>Total Records: {filteredRecords.length}</p>
+          </div>
+
+          <div className="action-buttons">
+            <button className="primary-btn" onClick={handleExportCSV}>
+              Export CSV
+            </button>
+
+            <button className="secondary-btn" onClick={handleExportPDF}>
+              Export PDF
+            </button>
           </div>
         </div>
 
@@ -116,9 +176,7 @@ function Attendance() {
                   <td>
                     <span
                       className={
-                        record.status === "Present"
-                          ? "badge-good"
-                          : "badge-low"
+                        record.status === "Present" ? "badge-good" : "badge-low"
                       }
                     >
                       {record.status}
@@ -133,7 +191,7 @@ function Attendance() {
         ) : (
           <div className="empty-state">
             <h3>No attendance records found</h3>
-            <p>Attendance records will appear here after face recognition marking.</p>
+            <p>Attendance records will appear here after face recognition or manual marking.</p>
           </div>
         )}
       </div>

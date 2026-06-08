@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from face_utils import (
     recognize_attendance_session,
@@ -14,6 +14,9 @@ from flask_jwt_extended import (
 )
 from models import db, User, Student, TeacherAssignment, Attendance
 from datetime import timedelta
+import csv
+from io import StringIO
+from flask import Response
 
 
 app = Flask(__name__)
@@ -1043,7 +1046,71 @@ def save_manual_attendance():
         "success": True,
         "message": "Manual attendance saved successfully.",
         "saved_count": saved_count
-    }), 200    
+    }), 200  
+
+@app.route("/api/export-attendance-csv", methods=["GET"])
+@jwt_required()
+def export_attendance_csv():
+    user_id = int(get_jwt_identity())
+    claims = get_jwt()
+    role = claims.get("role")
+
+    if role == "admin":
+        records = Attendance.query.order_by(Attendance.id.desc()).all()
+    elif role == "teacher":
+        records = Attendance.query.filter_by(
+            teacher_id=user_id
+        ).order_by(Attendance.id.desc()).all()
+    else:
+        return jsonify({
+            "success": False,
+            "message": "Invalid role."
+        }), 403
+
+    output = StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "Student ID",
+        "Student Name",
+        "Branch",
+        "Section",
+        "Subject",
+        "Lecture",
+        "Date",
+        "Time",
+        "Status",
+        "Teacher"
+    ])
+
+    for record in records:
+        student = Student.query.filter_by(
+            student_id=record.student_id
+        ).first()
+
+        teacher = User.query.get(record.teacher_id)
+
+        writer.writerow([
+            record.student_id,
+            student.name if student else "Unknown",
+            student.branch if student else "-",
+            student.section if student else "-",
+            record.subject,
+            record.lecture_no,
+            record.date,
+            record.time,
+            record.status,
+            teacher.name if teacher else "-"
+        ])
+
+    response = Response(
+        output.getvalue(),
+        mimetype="text/csv"
+    )
+
+    response.headers["Content-Disposition"] = "attachment; filename=attendance_report.csv"
+
+    return response  
 
 if __name__ == "__main__":
     with app.app_context():

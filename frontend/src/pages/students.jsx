@@ -19,6 +19,17 @@ function Students() {
     phone: "",
   });
 
+  const [editingStudent, setEditingStudent] = useState(null);
+
+const [editForm, setEditForm] = useState({
+  student_id: "",
+  name: "",
+  branch: "",
+  section: "",
+  email: "",
+  phone: "",
+});
+
   async function fetchStudents() {
     try {
       const response = await api.get("/api/students");
@@ -135,6 +146,68 @@ async function handleTrainModel() {
   }
 }
 
+function handleEditClick(student) {
+  setEditingStudent(student);
+
+  setEditForm({
+    student_id: student.student_id,
+    name: student.name,
+    branch: student.branch,
+    section: student.section,
+    email: student.email || "",
+    phone: student.phone || "",
+  });
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  });
+}
+
+function handleEditChange(e) {
+  setEditForm({
+    ...editForm,
+    [e.target.name]: e.target.value,
+  });
+}
+
+function cancelEdit() {
+  setEditingStudent(null);
+
+  setEditForm({
+    student_id: "",
+    name: "",
+    branch: "",
+    section: "",
+    email: "",
+    phone: "",
+  });
+}
+
+async function handleUpdateStudent(e) {
+  e.preventDefault();
+  setMessage("");
+
+  if (!editingStudent) {
+    setMessage("No student selected for editing.");
+    return;
+  }
+
+  try {
+    const response = await api.put(
+      `/api/students/${editingStudent.id}`,
+      editForm
+    );
+
+    setMessage(response.data.message);
+
+    cancelEdit();
+    fetchStudents();
+  } catch (error) {
+    setMessage(error.response?.data?.message || "Unable to update student.");
+  }
+}
+
   return (
     <Layout role={user?.role}>
       <div className="page-header">
@@ -149,6 +222,74 @@ async function handleTrainModel() {
       </div>
 
       {message && <div className="alert info-alert">{message}</div>}
+
+      {user?.role === "admin" && editingStudent && (
+  <div className="section-card edit-card">
+    <h2>Edit Student Details</h2>
+
+    <form onSubmit={handleUpdateStudent} className="form-grid">
+      <input
+        type="text"
+        name="student_id"
+        placeholder="Student ID"
+        value={editForm.student_id}
+        onChange={handleEditChange}
+        required
+      />
+
+      <input
+        type="text"
+        name="name"
+        placeholder="Student Name"
+        value={editForm.name}
+        onChange={handleEditChange}
+        required
+      />
+
+      <input
+        type="text"
+        name="branch"
+        placeholder="Branch"
+        value={editForm.branch}
+        onChange={handleEditChange}
+        required
+      />
+
+      <input
+        type="text"
+        name="section"
+        placeholder="Section"
+        value={editForm.section}
+        onChange={handleEditChange}
+        required
+      />
+
+      <input
+        type="email"
+        name="email"
+        placeholder="Email Address"
+        value={editForm.email}
+        onChange={handleEditChange}
+      />
+
+      <input
+        type="text"
+        name="phone"
+        placeholder="Phone Number"
+        value={editForm.phone}
+        onChange={handleEditChange}
+      />
+
+      <button type="submit" className="primary-btn">
+        Update Student
+      </button>
+
+      <button type="button" className="secondary-btn" onClick={cancelEdit}>
+        Cancel
+      </button>
+    </form>
+  </div>
+)}
 
       {user?.role === "admin" && (
        <div className="section-card">
@@ -288,25 +429,32 @@ async function handleTrainModel() {
                       {student.attendance_percentage}%
                     </span>
                   </td>
-                    {user?.role === "admin" && (
-                       <td>
-                        <div className="action-buttons">
-                          <button
-                           className="secondary-btn"
-                           onClick={() => handleCaptureFace(student.student_id)}
-                          >
-                            Capture Face
-                          </button>
+                   {user?.role === "admin" && (
+                     <td>
+                       <div className="action-buttons">
+                        <button
+        className="edit-btn"
+        onClick={() => handleEditClick(student)}
+      >
+        Edit
+      </button>
 
-                          <button
-                            className="danger-btn"
-                            onClick={() => handleDelete(student.id)}
-                           >
-                            Delete
-                          </button>
-                        </div>
-                     </td>
-                    )}
+      <button
+        className="secondary-btn"
+        onClick={() => handleCaptureFace(student.student_id)}
+      >
+        Capture Face
+      </button>
+
+      <button
+        className="danger-btn"
+        onClick={() => handleDelete(student.id)}
+      >
+        Delete
+      </button>
+    </div>
+  </td>
+)} 
                 </tr>
               ))}
             </tbody>
