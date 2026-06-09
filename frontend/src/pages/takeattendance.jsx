@@ -12,6 +12,9 @@ function TakeAttendance() {
   const [form, setForm] = useState({
     assignment_id: "",
     lecture_no: "Lecture 1",
+    lecture_start_time: "",
+    lecture_end_time: "",
+
   });
 
   async function fetchClasses() {
@@ -41,9 +44,11 @@ function TakeAttendance() {
 
     try {
       const response = await api.post("/api/start-attendance", {
-        assignment_id: Number(form.assignment_id),
-        lecture_no: form.lecture_no,
-      });
+      assignment_id: Number(form.assignment_id),
+      lecture_no: form.lecture_no,
+      lecture_start_time: form.lecture_start_time,
+      lecture_end_time: form.lecture_end_time,
+   });
 
       setMessage(response.data.message);
       setSessionInfo(response.data.session);
@@ -60,11 +65,12 @@ function TakeAttendance() {
   setMessage("Starting camera. Please wait...");
 
   try {
-    const response = await api.post("/api/start-camera-attendance", {
-      assignment_id: sessionInfo.assignment_id,
-      lecture_no: sessionInfo.lecture_no,
-    });
-
+   const response = await api.post("/api/start-camera-attendance", {
+     assignment_id: sessionInfo.assignment_id,
+     lecture_no: sessionInfo.lecture_no,
+     lecture_start_time: sessionInfo.lecture_start_time,
+     lecture_end_time: sessionInfo.lecture_end_time,
+  });
     setMessage(
       `${response.data.message} Marked: ${response.data.marked_count}`
     );
@@ -119,6 +125,22 @@ function TakeAttendance() {
               <option value="Lab">Lab</option>
             </select>
 
+            <input
+              type="time"
+              name="lecture_start_time"
+              value={form.lecture_start_time}
+              onChange={handleChange}
+              required
+            />
+
+            <input
+              type="time"
+              name="lecture_end_time"
+              value={form.lecture_end_time}
+              onChange={handleChange}
+              required
+             />
+
             <button type="submit" className="primary-btn">
               Start Attendance
             </button>
@@ -163,6 +185,7 @@ function TakeAttendance() {
           </button>
 
         </div>
+      
       )}
     </Layout>
   );

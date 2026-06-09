@@ -155,7 +155,13 @@ def train_face_model():
         "faces_trained": len(face_samples)
     }
 
-def recognize_attendance_session(assignment, lecture_no, teacher_id):
+def recognize_attendance_session(
+    assignment,
+    lecture_no,
+    teacher_id,
+    lecture_start_time,
+    lecture_end_time
+):
     if not os.path.exists(TRAINER_PATH):
         return {
             "success": False,
@@ -259,10 +265,12 @@ def recognize_attendance_session(assignment, lecture_no, teacher_id):
                         teacher_id=teacher_id,
                         subject=assignment.subject,
                         lecture_no=lecture_no,
+                        lecture_start_time=lecture_start_time,
+                        lecture_end_time=lecture_end_time,
                         date=today,
                         time=current_time,
                         status="Present"
-                    )
+)
 
                     db.session.add(attendance)
                     db.session.commit()

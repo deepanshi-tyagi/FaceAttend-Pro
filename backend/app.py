@@ -17,6 +17,7 @@ from datetime import timedelta
 import csv
 from io import StringIO
 from flask import Response
+from sqlalchemy import text
 
 
 app = Flask(__name__)
@@ -713,12 +714,14 @@ def start_attendance():
 
     assignment_id = data.get("assignment_id")
     lecture_no = data.get("lecture_no", "").strip()
+    lecture_start_time = data.get("lecture_start_time", "").strip()
+    lecture_end_time = data.get("lecture_end_time", "").strip()
 
     if not assignment_id or not lecture_no:
-        return jsonify({
-            "success": False,
-            "message": "Class and lecture are required."
-        }), 400
+      return jsonify({
+        "success": False,
+        "message": "Class and lecture are required."
+    }), 400
 
     assignment = TeacherAssignment.query.get(assignment_id)
 
@@ -754,6 +757,8 @@ def start_attendance():
             "branch": assignment.branch,
             "section": assignment.section,
             "lecture_no": lecture_no,
+            "lecture_start_time": lecture_start_time,
+            "lecture_end_time": lecture_end_time,
             "student_count": len(students)
         }
     }), 200
@@ -769,8 +774,10 @@ def start_camera_attendance():
 
     assignment_id = data.get("assignment_id")
     lecture_no = data.get("lecture_no", "").strip()
+    lecture_start_time = data.get("lecture_start_time", "").strip()
+    lecture_end_time = data.get("lecture_end_time", "").strip()
 
-    if not assignment_id or not lecture_no:
+    if not assignment_id or not lecture_no or not lecture_start_time or not lecture_end_time:
         return jsonify({
             "success": False,
             "message": "Class and lecture are required."
@@ -795,7 +802,9 @@ def start_camera_attendance():
     result = recognize_attendance_session(
         assignment=assignment,
         lecture_no=lecture_no,
-        teacher_id=teacher_id
+        teacher_id=teacher_id,
+        lecture_start_time=lecture_start_time,
+        lecture_end_time=lecture_end_time
     )
 
     status_code = 200 if result["success"] else 400
@@ -893,8 +902,10 @@ def get_manual_attendance_students():
 
     assignment_id = data.get("assignment_id")
     lecture_no = data.get("lecture_no", "").strip()
+    lecture_start_time = data.get("lecture_start_time", "").strip()
+    lecture_end_time = data.get("lecture_end_time", "").strip()
 
-    if not assignment_id or not lecture_no:
+    if not assignment_id or not lecture_no or not lecture_start_time or not lecture_end_time:
         return jsonify({
             "success": False,
             "message": "Class and lecture are required."
@@ -929,6 +940,8 @@ def get_manual_attendance_students():
             student_id=student.student_id,
             subject=assignment.subject,
             lecture_no=lecture_no,
+            lecture_start_time=lecture_start_time,
+            lecture_end_time=lecture_end_time,
             date=today
         ).first()
 
@@ -1025,18 +1038,22 @@ def save_manual_attendance():
             existing_record.status = status
             existing_record.time = current_time
             existing_record.teacher_id = teacher_id
+            existing_record.lecture_start_time = lecture_start_time
+            existing_record.lecture_end_time = lecture_end_time
         else:
-            record = Attendance(
-                student_id=student_id,
-                teacher_id=teacher_id,
-                subject=assignment.subject,
-                lecture_no=lecture_no,
-                date=today,
-                time=current_time,
-                status=status
+             record = Attendance(
+             student_id=student_id,
+             teacher_id=teacher_id,
+             subject=assignment.subject,
+             lecture_no=lecture_no,
+             lecture_start_time=lecture_start_time,
+             lecture_end_time=lecture_end_time,
+             date=today,
+             time=current_time,
+             status=status
             )
 
-            db.session.add(record)
+             db.session.add(record)
 
         saved_count += 1
 
@@ -1303,9 +1320,90 @@ def change_password():
         "message": "Password changed successfully. Please login again."
     }), 200
 
+@app.route("/api/attendance/<int:attendance_id>/status", methods=["PUT"])
+@jwt_required()
+def update_attendance_status(attendance_id):
+    user_id = int(get_jwt_identity())
+    claims = get_jwt()
+    role = claims.get("role")
+
+    data = request.get_json()
+    new_status = data.get("status", "").strip()
+
+    if new_status not in ["Present", "Absent"]:
+        return jsonify({
+            "success": False,
+            "message": "Invalid status. Status must be Present or Absent."
+        }), 400
+
+    record = Attendance.query.get(attendance_id)
+
+    if not record:
+        return jsonify({
+            "success": False,
+            "message": "Attendance record not found."
+        }), 404
+
+    if role == "teacher" and record.teacher_id != user_id:
+        return jsonify({
+            "success": False,
+            "message": "Access denied. You can only update your own attendance records."
+        }), 403
+
+    if role not in ["admin", "teacher"]:
+        return jsonify({
+            "success": False,
+            "message": "Invalid role."
+        }), 403
+
+    from datetime import datetime
+
+    record_date = datetime.strptime(record.date, "%Y-%m-%d").date()
+    today = datetime.now().date()
+
+    days_difference = (today - record_date).days
+
+    if days_difference > 5:
+        return jsonify({
+            "success": False,
+            "message": "Attendance update is locked. Records can only be updated within 5 days."
+        }), 403
+
+    record.status = new_status
+    record.time = datetime.now().strftime("%H:%M:%S")
+
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": "Attendance status updated successfully.",
+        "attendance": {
+            "id": record.id,
+            "status": record.status,
+            "time": record.time
+        }
+    }), 200
+
+def migrate_attendance_time_columns():
+    with db.engine.connect() as connection:
+        columns = connection.execute(text("PRAGMA table_info(attendance)")).fetchall()
+
+        column_names = [column[1] for column in columns]
+
+        if "lecture_start_time" not in column_names:
+            connection.execute(text("ALTER TABLE attendance ADD COLUMN lecture_start_time VARCHAR(20)"))
+            print("Added lecture_start_time column.")
+
+        if "lecture_end_time" not in column_names:
+            connection.execute(text("ALTER TABLE attendance ADD COLUMN lecture_end_time VARCHAR(20)"))
+            print("Added lecture_end_time column.")
+
+        connection.commit()
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
         create_default_admin()
+        migrate_attendance_time_columns()
 
     app.run(debug=True, host="127.0.0.1", port=5000)

@@ -4,8 +4,8 @@ import api from "../api/axios";
 
 function Login() {
   const [role, setRole] = useState("admin");
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin123");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -49,7 +49,7 @@ function Login() {
 
         {message && <div className="alert">{message}</div>}
 
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleLogin} autoComplete="off">
           <div className="role-tabs">
             <button
               type="button"
@@ -68,20 +68,22 @@ function Login() {
             </button>
           </div>
 
-          <input
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
+         <input
+           type="text"
+           placeholder="Username"
+           value={username}
+           onChange={(e) => setUsername(e.target.value)}
+           autoComplete="off"
+           required
+         />
 
           <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
+           type="password"
+           placeholder="Password"
+           value={password}
+           onChange={(e) => setPassword(e.target.value)}
+           autoComplete="new-password"
+           required
           />
 
           <button type="submit" className="primary-btn" disabled={loading}>

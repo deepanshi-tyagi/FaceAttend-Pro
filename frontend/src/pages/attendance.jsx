@@ -96,6 +96,29 @@ function Attendance() {
       setMessage("Unable to export PDF.");
     }
   }
+ 
+  async function handleStatusUpdate(recordId, currentStatus) {
+  const newStatus = currentStatus === "Present" ? "Absent" : "Present";
+
+  const confirmUpdate = window.confirm(
+    `Change attendance status to ${newStatus}? This is allowed only within 5 days.`
+  );
+
+  if (!confirmUpdate) return;
+
+  try {
+    const response = await api.put(`/api/attendance/${recordId}/status`, {
+      status: newStatus,
+    });
+
+    setMessage(response.data.message);
+    fetchAttendance();
+  } catch (error) {
+    setMessage(
+      error.response?.data?.message || "Unable to update attendance status."
+    );
+  }
+}
 
   return (
     <Layout role={user?.role}>
@@ -152,6 +175,7 @@ function Attendance() {
                 <th>Time</th>
                 <th>Status</th>
                 {user?.role === "admin" && <th>Teacher</th>}
+                <th>Action</th>
               </tr>
             </thead>
 
@@ -184,6 +208,14 @@ function Attendance() {
                   </td>
 
                   {user?.role === "admin" && <td>{record.teacher_name}</td>}
+                  <td>
+                    <button
+                      className="secondary-btn"
+                      onClick={() => handleStatusUpdate(record.id, record.status)}
+                    >
+                       Mark {record.status === "Present" ? "Absent" : "Present"}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

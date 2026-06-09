@@ -149,6 +149,22 @@ function ManualAttendance() {
               <option value="Lab">Lab</option>
             </select>
 
+            <input
+              type="time"
+              name="lecture_start_time"
+              value={form.lecture_start_time}
+              onChange={handleChange}
+              required
+            />
+
+            <input
+              type="time"
+              name="lecture_end_time"
+              value={form.lecture_end_time}
+              onChange={handleChange}
+              required
+/>
+
             <button type="submit" className="primary-btn">
               Load Students
             </button>
