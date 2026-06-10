@@ -937,3 +937,96 @@ body {
   width: 18px;
   height: 18px;
 }
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 20px;
+}
+
+.attendance-table {
+  min-width: 1250px;
+}
+
+.attendance-table th,
+.attendance-table td {
+  white-space: nowrap;
+}
+
+.attendance-table td:nth-child(2) {
+  min-width: 130px;
+}
+
+.attendance-table td:nth-child(7) {
+  min-width: 130px;
+}
+
+.attendance-table td:nth-child(8) {
+  min-width: 120px;
+}
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 20px;
+}
+
+.attendance-table {
+  min-width: 1350px;
+}
+
+.attendance-table th,
+.attendance-table td {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.attendance-table td:nth-child(2) {
+  min-width: 130px;
+}
+
+.attendance-table td:nth-child(7) {
+  min-width: 135px;
+}
+
+.attendance-table td:nth-child(8) {
+  min-width: 125px;
+}
+
+.attendance-table td:nth-child(13) {
+  min-width: 135px;
+}
+
+.action-small-btn {
+  min-width: 120px;
+  padding: 10px 14px;
+}
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 20px;
+}
+
+.student-link-btn {
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-weight: 900;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  text-align: left;
+}
+
+.student-link-btn:hover {
+  text-decoration: underline;
+}
+
+.attendance-detail-table {
+  min-width: 1000px;
+}
+
+.action-small-btn {
+  min-width: 120px;
+  padding: 10px 14px;
+}
+
+

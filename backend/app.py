@@ -28,10 +28,16 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["JWT_SECRET_KEY"] = "faceattend_pro_secret_key"
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=8)
 
-CORS(app, supports_credentials=True, origins=[
-    "http://localhost:5173",
-    "http://127.0.0.1:5173"
-])
+CORS(app, supports_credentials=True, resources={
+    r"/*": {
+        "origins": [
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:5174",
+            "http://127.0.0.1:5174"
+        ]
+    }
+})
 
 db.init_app(app)
 jwt = JWTManager(app)
@@ -889,14 +895,84 @@ def get_attendance_records():
 
         teacher = User.query.get(record.teacher_id)
 
+    attendance_list.append({
+        "id": record.id,
+        "student_id": record.student_id,
+        "student_name": student.name if student else "Unknown",
+        "branch": student.branch if student else "-",
+        "section": student.section if student else "-",
+        "subject": record.subject,
+        "lecture_no": record.lecture_no,
+        "lecture_start_time": record.lecture_start_time,
+        "lecture_end_time": record.lecture_end_time,
+        "is_extra_class": record.is_extra_class,
+        "date": record.date,
+        "time": record.time,
+        "status": record.status,
+        "teacher_name": teacher.name if teacher else "-"
+    })
+
+    return jsonify({
+        "success": True,
+        "attendance": attendance_list
+    }), 200
+
+@app.route("/api/students/<student_id>/attendance", methods=["GET"])
+@jwt_required()
+def get_student_attendance_details(student_id):
+    user_id = int(get_jwt_identity())
+    claims = get_jwt()
+    role = claims.get("role")
+
+    student = Student.query.filter_by(student_id=student_id).first()
+
+    if not student:
+        return jsonify({
+            "success": False,
+            "message": "Student not found."
+        }), 404
+
+    if role == "teacher":
+        assignments = TeacherAssignment.query.filter_by(teacher_id=user_id).all()
+
+        allowed = False
+
+        for assignment in assignments:
+            if (
+                assignment.branch.strip().lower() == student.branch.strip().lower()
+                and assignment.section.strip().lower() == student.section.strip().lower()
+            ):
+                allowed = True
+                break
+
+        if not allowed:
+            return jsonify({
+                "success": False,
+                "message": "Access denied. This student is not in your assigned class."
+            }), 403
+
+    elif role != "admin":
+        return jsonify({
+            "success": False,
+            "message": "Invalid role."
+        }), 403
+
+    records = Attendance.query.filter_by(
+        student_id=student_id
+    ).order_by(Attendance.id.desc()).all()
+
+    attendance_list = []
+
+    for record in records:
+        teacher = User.query.get(record.teacher_id)
+
         attendance_list.append({
             "id": record.id,
-            "student_id": record.student_id,
-            "student_name": student.name if student else "Unknown",
-            "branch": student.branch if student else "-",
-            "section": student.section if student else "-",
             "subject": record.subject,
             "lecture_no": record.lecture_no,
+            "lecture_start_time": record.lecture_start_time,
+            "lecture_end_time": record.lecture_end_time,
+            "is_extra_class": record.is_extra_class,
             "date": record.date,
             "time": record.time,
             "status": record.status,
@@ -905,6 +981,15 @@ def get_attendance_records():
 
     return jsonify({
         "success": True,
+        "student": {
+            "id": student.id,
+            "student_id": student.student_id,
+            "name": student.name,
+            "branch": student.branch,
+            "section": student.section,
+            "email": student.email,
+            "phone": student.phone
+        },
         "attendance": attendance_list
     }), 200
 
@@ -1431,6 +1516,91 @@ def migrate_attendance_time_columns():
             print("Added lecture_end_time column.")
 
         connection.commit()
+
+@app.route("/api/today-attendance", methods=["GET"])
+@jwt_required()
+def get_today_attendance():
+    user_id = int(get_jwt_identity())
+    claims = get_jwt()
+    role = claims.get("role")
+
+    from datetime import datetime
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    result = []
+
+    if role == "admin":
+        assignments = TeacherAssignment.query.order_by(
+            TeacherAssignment.id.desc()
+        ).all()
+
+    elif role == "teacher":
+        assignments = TeacherAssignment.query.filter_by(
+            teacher_id=user_id
+        ).order_by(TeacherAssignment.id.desc()).all()
+
+    else:
+        return jsonify({
+            "success": False,
+            "message": "Invalid role."
+        }), 403
+
+    for assignment in assignments:
+        teacher = User.query.get(assignment.teacher_id)
+
+        students = Student.query.filter_by(
+            branch=assignment.branch,
+            section=assignment.section
+        ).order_by(Student.name.asc()).all()
+
+        for student in students:
+            today_records = Attendance.query.filter_by(
+                student_id=student.student_id,
+                subject=assignment.subject,
+                date=today
+            ).order_by(Attendance.id.desc()).all()
+
+            if today_records:
+                for record in today_records:
+                    result.append({
+                        "id": record.id,
+                        "student_id": student.student_id,
+                        "student_name": student.name,
+                        "branch": student.branch,
+                        "section": student.section,
+                        "subject": assignment.subject,
+                        "lecture_no": record.lecture_no,
+                        "lecture_start_time": record.lecture_start_time,
+                        "lecture_end_time": record.lecture_end_time,
+                        "is_extra_class": record.is_extra_class,
+                        "date": record.date,
+                        "time": record.time,
+                        "status": record.status,
+                        "teacher_name": teacher.name if teacher else "-"
+                    })
+            else:
+                result.append({
+                    "id": f"not-marked-{assignment.id}-{student.student_id}",
+                    "student_id": student.student_id,
+                    "student_name": student.name,
+                    "branch": student.branch,
+                    "section": student.section,
+                    "subject": assignment.subject,
+                    "lecture_no": "-",
+                    "lecture_start_time": None,
+                    "lecture_end_time": None,
+                    "is_extra_class": False,
+                    "date": today,
+                    "time": "-",
+                    "status": "Not Marked",
+                    "teacher_name": teacher.name if teacher else "-"
+                })
+
+    return jsonify({
+        "success": True,
+        "date": today,
+        "attendance": result
+    }), 200
 
 if __name__ == "__main__":
     with app.app_context():
