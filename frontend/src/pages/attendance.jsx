@@ -94,6 +94,20 @@ function Attendance() {
     return "Not saved";
   }
 
+      const presentToday = attendance.filter(
+      (record) => record.status === "Present"
+    ).length;
+
+    const absentToday = attendance.filter(
+      (record) => record.status === "Absent"
+    ).length;
+
+    const notMarkedToday = attendance.filter(
+      (record) => record.status === "Not Marked"
+    ).length;
+
+    const totalRecordsToday = attendance.length;
+
   const filteredAttendance = attendance.filter((record) => {
     const keyword = search.toLowerCase();
 
@@ -123,6 +137,28 @@ function Attendance() {
       </div>
 
       {message && <div className="alert info-alert">{message}</div>}
+
+          <div className="card-grid attendance-summary-grid">
+            <div className="card">
+              <span>Present Today</span>
+              <h2>{presentToday}</h2>
+            </div>
+
+            <div className="card">
+              <span>Absent Today</span>
+              <h2>{absentToday}</h2>
+            </div>
+
+            <div className="card">
+              <span>Not Marked Today</span>
+              <h2>{notMarkedToday}</h2>
+            </div>
+
+            <div className="card">
+              <span>Total Records Today</span>
+              <h2>{totalRecordsToday}</h2>
+            </div>
+          </div>
 
       <div className="section-card">
         <div className="table-header">

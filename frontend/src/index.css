@@ -1028,5 +1028,12 @@ body {
   min-width: 120px;
   padding: 10px 14px;
 }
+.attendance-summary-grid {
+  margin-bottom: 26px;
+}
+
+.attendance-summary-grid .card h2 {
+  font-size: 34px;
+}
 
 
