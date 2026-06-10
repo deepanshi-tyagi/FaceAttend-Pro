@@ -1,3 +1,4 @@
+from anyio import current_time
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from face_utils import (
@@ -493,23 +494,35 @@ def get_students():
     student_list = []
 
     for student in students:
-        total_records = Attendance.query.filter_by(
-            student_id=student.student_id
-        ).count()
-
-        present_count = Attendance.query.filter_by(
+        regular_total = Attendance.query.filter_by(
             student_id=student.student_id,
-            status="Present"
+            is_extra_class=False
         ).count()
 
-        absent_count = Attendance.query.filter_by(
+        regular_present = Attendance.query.filter_by(
             student_id=student.student_id,
-            status="Absent"
+            status="Present",
+            is_extra_class=False
         ).count()
 
-        attendance_percentage = round(
-            (present_count / total_records) * 100, 2
-        ) if total_records > 0 else 0
+        extra_present = Attendance.query.filter_by(
+            student_id=student.student_id,
+            status="Present",
+            is_extra_class=True
+        ).count()
+
+        present_count = regular_present + extra_present
+        total_count = regular_total
+        absent_count = regular_total - regular_present
+
+        attendance_percentage = (
+            round((present_count / total_count) * 100, 2)
+            if total_count > 0
+            else 0
+        )
+
+        if attendance_percentage > 100:
+            attendance_percentage = 100
 
         student_list.append({
             "id": student.id,
@@ -521,7 +534,7 @@ def get_students():
             "phone": student.phone,
             "present_count": present_count,
             "absent_count": absent_count,
-            "total_records": total_records,
+            "total_count": total_count,
             "attendance_percentage": attendance_percentage
         })
 
@@ -716,6 +729,7 @@ def start_attendance():
     lecture_no = data.get("lecture_no", "").strip()
     lecture_start_time = data.get("lecture_start_time", "").strip()
     lecture_end_time = data.get("lecture_end_time", "").strip()
+    is_extra_class = data.get("is_extra_class", False)
 
     if not assignment_id or not lecture_no:
       return jsonify({
@@ -759,6 +773,7 @@ def start_attendance():
             "lecture_no": lecture_no,
             "lecture_start_time": lecture_start_time,
             "lecture_end_time": lecture_end_time,
+            "is_extra_class": is_extra_class,
             "student_count": len(students)
         }
     }), 200
@@ -776,6 +791,7 @@ def start_camera_attendance():
     lecture_no = data.get("lecture_no", "").strip()
     lecture_start_time = data.get("lecture_start_time", "").strip()
     lecture_end_time = data.get("lecture_end_time", "").strip()
+    is_extra_class = data.get("is_extra_class", False)
 
     if not assignment_id or not lecture_no or not lecture_start_time or not lecture_end_time:
         return jsonify({
@@ -804,7 +820,8 @@ def start_camera_attendance():
         lecture_no=lecture_no,
         teacher_id=teacher_id,
         lecture_start_time=lecture_start_time,
-        lecture_end_time=lecture_end_time
+        lecture_end_time=lecture_end_time,
+        is_extra_class=is_extra_class
     )
 
     status_code = 200 if result["success"] else 400
@@ -904,11 +921,12 @@ def get_manual_attendance_students():
     lecture_no = data.get("lecture_no", "").strip()
     lecture_start_time = data.get("lecture_start_time", "").strip()
     lecture_end_time = data.get("lecture_end_time", "").strip()
+    is_extra_class = data.get("is_extra_class", False)
 
     if not assignment_id or not lecture_no or not lecture_start_time or not lecture_end_time:
         return jsonify({
             "success": False,
-            "message": "Class and lecture are required."
+            "message": "Class, lecture, start time, and end time are required."
         }), 400
 
     assignment = TeacherAssignment.query.get(assignment_id)
@@ -963,7 +981,10 @@ def get_manual_attendance_students():
             "subject": assignment.subject,
             "branch": assignment.branch,
             "section": assignment.section,
-            "lecture_no": lecture_no
+            "lecture_no": lecture_no,
+            "lecture_start_time": lecture_start_time,
+            "lecture_end_time": lecture_end_time,
+            "is_extra_class": is_extra_class
         },
         "students": student_list
     }), 200
@@ -979,12 +1000,15 @@ def save_manual_attendance():
 
     assignment_id = data.get("assignment_id")
     lecture_no = data.get("lecture_no", "").strip()
+    lecture_start_time = data.get("lecture_start_time", "").strip()
+    lecture_end_time = data.get("lecture_end_time", "").strip()
+    is_extra_class = data.get("is_extra_class", False)
     attendance_data = data.get("attendance", [])
 
-    if not assignment_id or not lecture_no or not attendance_data:
+    if not assignment_id or not lecture_no or not lecture_start_time or not lecture_end_time or not attendance_data:
         return jsonify({
             "success": False,
-            "message": "Class, lecture, and attendance data are required."
+            "message": "Class, lecture, start time, end time, and attendance data are required."
         }), 400
 
     assignment = TeacherAssignment.query.get(assignment_id)
@@ -1031,6 +1055,8 @@ def save_manual_attendance():
             student_id=student_id,
             subject=assignment.subject,
             lecture_no=lecture_no,
+            lecture_start_time=lecture_start_time,
+            lecture_end_time=lecture_end_time,
             date=today
         ).first()
 
@@ -1040,20 +1066,22 @@ def save_manual_attendance():
             existing_record.teacher_id = teacher_id
             existing_record.lecture_start_time = lecture_start_time
             existing_record.lecture_end_time = lecture_end_time
+            existing_record.is_extra_class = is_extra_class
         else:
-             record = Attendance(
-             student_id=student_id,
-             teacher_id=teacher_id,
-             subject=assignment.subject,
-             lecture_no=lecture_no,
-             lecture_start_time=lecture_start_time,
-             lecture_end_time=lecture_end_time,
-             date=today,
-             time=current_time,
-             status=status
+            record = Attendance(
+                student_id=student_id,
+                teacher_id=teacher_id,
+                subject=assignment.subject,
+                lecture_no=lecture_no,
+                lecture_start_time=lecture_start_time,
+                lecture_end_time=lecture_end_time,
+                is_extra_class=is_extra_class,
+                date=today,
+                time=current_time,
+                status=status
             )
 
-             db.session.add(record)
+            db.session.add(record)
 
         saved_count += 1
 
@@ -1063,7 +1091,7 @@ def save_manual_attendance():
         "success": True,
         "message": "Manual attendance saved successfully.",
         "saved_count": saved_count
-    }), 200  
+    }), 200
 
 @app.route("/api/export-attendance-csv", methods=["GET"])
 @jwt_required()
@@ -1393,6 +1421,10 @@ def migrate_attendance_time_columns():
         if "lecture_start_time" not in column_names:
             connection.execute(text("ALTER TABLE attendance ADD COLUMN lecture_start_time VARCHAR(20)"))
             print("Added lecture_start_time column.")
+
+        if "is_extra_class" not in column_names:
+          connection.execute(text("ALTER TABLE attendance ADD COLUMN is_extra_class BOOLEAN DEFAULT 0"))
+          print("Added is_extra_class column.")
 
         if "lecture_end_time" not in column_names:
             connection.execute(text("ALTER TABLE attendance ADD COLUMN lecture_end_time VARCHAR(20)"))

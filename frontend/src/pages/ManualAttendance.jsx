@@ -13,48 +13,68 @@ function ManualAttendance() {
   const [form, setForm] = useState({
     assignment_id: "",
     lecture_no: "Lecture 1",
+    lecture_start_time: "",
+    lecture_end_time: "",
+    is_extra_class: false,
   });
-
-  async function fetchClasses() {
-    try {
-      const response = await api.get("/api/take-attendance/classes");
-      setClasses(response.data.classes);
-    } catch (error) {
-      setMessage(error.response?.data?.message || "Unable to load classes.");
-    }
-  }
 
   useEffect(() => {
     fetchClasses();
   }, []);
 
+  async function fetchClasses() {
+    try {
+      const response = await api.get("/api/take-attendance/classes");
+      setClasses(response.data.classes || []);
+    } catch (error) {
+      setMessage("Unable to load assigned classes.");
+    }
+  }
+
   function handleChange(e) {
+    const { name, value, type, checked } = e.target;
+
     setForm({
       ...form,
-      [e.target.name]: e.target.value,
+      [name]: type === "checkbox" ? checked : value,
     });
   }
 
   async function handleLoadStudents(e) {
     e.preventDefault();
+
     setMessage("");
     setStudents([]);
     setAssignmentInfo(null);
 
+    if (
+      !form.assignment_id ||
+      !form.lecture_no ||
+      !form.lecture_start_time ||
+      !form.lecture_end_time
+    ) {
+      setMessage("Class, lecture, start time, and end time are required.");
+      return;
+    }
+
     try {
       const response = await api.post("/api/manual-attendance/students", {
-        assignment_id: Number(form.assignment_id),
+        assignment_id: form.assignment_id,
         lecture_no: form.lecture_no,
+        lecture_start_time: form.lecture_start_time,
+        lecture_end_time: form.lecture_end_time,
+        is_extra_class: form.is_extra_class,
       });
 
-      setStudents(response.data.students);
+      setStudents(response.data.students || []);
       setAssignmentInfo(response.data.assignment);
+      setMessage("Students loaded successfully.");
     } catch (error) {
       setMessage(error.response?.data?.message || "Unable to load students.");
     }
   }
 
-  function updateStatus(studentId, status) {
+  function updateStudentStatus(studentId, status) {
     const updatedStudents = students.map((student) => {
       if (student.student_id === studentId) {
         return {
@@ -81,8 +101,13 @@ function ManualAttendance() {
   async function handleSaveAttendance() {
     setMessage("");
 
-    if (!assignmentInfo || students.length === 0) {
+    if (!assignmentInfo) {
       setMessage("Please load students first.");
+      return;
+    }
+
+    if (students.length === 0) {
+      setMessage("No students available to save attendance.");
       return;
     }
 
@@ -93,13 +118,17 @@ function ManualAttendance() {
 
     try {
       const response = await api.post("/api/manual-attendance/save", {
-        assignment_id: assignmentInfo.id,
-        lecture_no: assignmentInfo.lecture_no,
+        assignment_id: form.assignment_id,
+        lecture_no: form.lecture_no,
+        lecture_start_time: form.lecture_start_time,
+        lecture_end_time: form.lecture_end_time,
+        is_extra_class: form.is_extra_class,
         attendance: attendancePayload,
       });
 
-      setMessage(`${response.data.message} Records saved: ${response.data.saved_count}`);
+      setMessage(response.data.message || "Attendance saved successfully.");
     } catch (error) {
+      console.log("Save attendance error:", error.response?.data || error);
       setMessage(error.response?.data?.message || "Unable to save attendance.");
     }
   }
@@ -110,165 +139,211 @@ function ManualAttendance() {
         <span>Manual Attendance</span>
         <h1>Manual Attendance</h1>
         <p>
-          Select class and lecture, then mark students Present or Absent manually.
+          Mark attendance manually for regular or extra classes using selected
+          lecture timing.
         </p>
       </div>
 
       {message && <div className="alert info-alert">{message}</div>}
 
       <div className="section-card">
-        <h2>Select Class and Lecture</h2>
+        <h2>Select Class Details</h2>
 
-        {classes.length > 0 ? (
-          <form onSubmit={handleLoadStudents} className="form-grid">
-            <select
-              name="assignment_id"
-              value={form.assignment_id}
-              onChange={handleChange}
-              required
-            >
-              <option value="">Select Subject / Class</option>
+        <form onSubmit={handleLoadStudents} className="form-grid">
+          <select
+            name="assignment_id"
+            value={form.assignment_id}
+            onChange={handleChange}
+            required
+          >
+            <option value="">Select Subject / Class</option>
 
-              {classes.map((item) => (
-                <option key={item.assignment_id} value={item.assignment_id}>
-                  {item.subject} - {item.branch} {item.section}
-                  {user?.role === "admin" ? ` - ${item.teacher_name}` : ""}
-                </option>
-              ))}
-            </select>
+            {classes.map((item) => (
+              <option key={item.assignment_id} value={item.assignment_id}>
+                {item.subject} - {item.branch} {item.section}
+              </option>
+            ))}
+          </select>
 
-            <select
-              name="lecture_no"
-              value={form.lecture_no}
-              onChange={handleChange}
-              required
-            >
-              <option value="Lecture 1">Lecture 1</option>
-              <option value="Lecture 2">Lecture 2</option>
-              <option value="Lecture 3">Lecture 3</option>
-              <option value="Lab">Lab</option>
-            </select>
+          <select
+            name="lecture_no"
+            value={form.lecture_no}
+            onChange={handleChange}
+            required
+          >
+            <option value="Lecture 1">Lecture 1</option>
+            <option value="Lecture 2">Lecture 2</option>
+            <option value="Lecture 3">Lecture 3</option>
+            <option value="Lecture 4">Lecture 4</option>
+            <option value="Lab">Lab</option>
+            <option value="Extra Class">Extra Class</option>
+          </select>
 
+          <input
+            type="time"
+            name="lecture_start_time"
+            value={form.lecture_start_time}
+            onChange={handleChange}
+            required
+          />
+
+          <input
+            type="time"
+            name="lecture_end_time"
+            value={form.lecture_end_time}
+            onChange={handleChange}
+            required
+          />
+
+          <label className="checkbox-row">
             <input
-              type="time"
-              name="lecture_start_time"
-              value={form.lecture_start_time}
+              type="checkbox"
+              name="is_extra_class"
+              checked={form.is_extra_class}
               onChange={handleChange}
-              required
             />
+            Mark as Extra Class
+          </label>
 
-            <input
-              type="time"
-              name="lecture_end_time"
-              value={form.lecture_end_time}
-              onChange={handleChange}
-              required
-/>
-
-            <button type="submit" className="primary-btn">
-              Load Students
-            </button>
-          </form>
-        ) : (
-          <div className="empty-state">
-            <h3>No classes found</h3>
-            <p>No assigned classes are available for attendance.</p>
-          </div>
-        )}
+          <button type="submit" className="primary-btn">
+            Load Students
+          </button>
+        </form>
       </div>
 
       {assignmentInfo && (
         <div className="section-card">
+          <h2>Selected Class</h2>
+
+          <div className="session-summary">
+            <p>
+              <strong>Subject:</strong> {assignmentInfo.subject}
+            </p>
+
+            <p>
+              <strong>Class:</strong> {assignmentInfo.branch}{" "}
+              {assignmentInfo.section}
+            </p>
+
+            <p>
+              <strong>Lecture:</strong> {assignmentInfo.lecture_no}
+            </p>
+
+            <p>
+              <strong>Time:</strong> {assignmentInfo.lecture_start_time} -{" "}
+              {assignmentInfo.lecture_end_time}
+            </p>
+
+            <p>
+              <strong>Class Type:</strong>{" "}
+              {assignmentInfo.is_extra_class ? (
+                <span className="badge-warning">Extra Class</span>
+              ) : (
+                <span className="badge-good">Regular Class</span>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {students.length > 0 && (
+        <div className="section-card">
           <div className="table-header">
             <div>
-              <h2>
-                {assignmentInfo.subject} - {assignmentInfo.branch}{" "}
-                {assignmentInfo.section}
-              </h2>
-              <p>{assignmentInfo.lecture_no}</p>
+              <h2>Mark Attendance</h2>
+              <p>Total students: {students.length}</p>
             </div>
 
             <div className="action-buttons">
-              <button className="secondary-btn" onClick={() => markAll("Present")}>
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => markAll("Present")}
+              >
                 Mark All Present
               </button>
 
-              <button className="danger-btn" onClick={() => markAll("Absent")}>
+              <button
+                type="button"
+                className="danger-btn"
+                onClick={() => markAll("Absent")}
+              >
                 Mark All Absent
               </button>
-            </div>
-          </div>
-
-          {students.length > 0 ? (
-            <>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>S.No.</th>
-                    <th>Student ID</th>
-                    <th>Name</th>
-                    <th>Branch</th>
-                    <th>Section</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {students.map((student, index) => (
-                    <tr key={student.student_id}>
-                      <td>{index + 1}</td>
-                      <td>{student.student_id}</td>
-                      <td>
-                        <strong>{student.name}</strong>
-                        <br />
-                        <small>{student.email || "-"}</small>
-                      </td>
-                      <td>{student.branch}</td>
-                      <td>{student.section}</td>
-                      <td>
-                        <div className="status-toggle">
-                          <button
-                            className={
-                              student.status === "Present"
-                                ? "present-btn active"
-                                : "present-btn"
-                            }
-                            onClick={() => updateStatus(student.student_id, "Present")}
-                          >
-                            Present
-                          </button>
-
-                          <button
-                            className={
-                              student.status === "Absent"
-                                ? "absent-btn active"
-                                : "absent-btn"
-                            }
-                            onClick={() => updateStatus(student.student_id, "Absent")}
-                          >
-                            Absent
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
 
               <button
+                type="button"
                 className="primary-btn"
-                style={{ marginTop: "18px" }}
                 onClick={handleSaveAttendance}
               >
                 Save Attendance
               </button>
-            </>
-          ) : (
-            <div className="empty-state">
-              <h3>No students found</h3>
-              <p>No students are available in this branch and section.</p>
             </div>
-          )}
+          </div>
+
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>S.No</th>
+                <th>Student ID</th>
+                <th>Name</th>
+                <th>Branch</th>
+                <th>Section</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {students.map((student, index) => (
+                <tr key={student.student_id}>
+                  <td>{index + 1}</td>
+                  <td>{student.student_id}</td>
+                  <td>{student.name}</td>
+                  <td>{student.branch}</td>
+                  <td>{student.section}</td>
+
+                  <td>
+                    <div className="status-toggle">
+                      <button
+                        type="button"
+                        className={
+                          student.status === "Present"
+                            ? "present-btn active"
+                            : "present-btn"
+                        }
+                        onClick={() =>
+                          updateStudentStatus(student.student_id, "Present")
+                        }
+                      >
+                        Present
+                      </button>
+
+                      <button
+                        type="button"
+                        className={
+                          student.status === "Absent"
+                            ? "absent-btn active"
+                            : "absent-btn"
+                        }
+                        onClick={() =>
+                          updateStudentStatus(student.student_id, "Absent")
+                        }
+                      >
+                        Absent
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {assignmentInfo && students.length === 0 && (
+        <div className="empty-state">
+          <h3>No students found</h3>
+          <p>No students are available for this branch and section.</p>
         </div>
       )}
     </Layout>
@@ -276,3 +351,4 @@ function ManualAttendance() {
 }
 
 export default ManualAttendance;
+

@@ -160,7 +160,8 @@ def recognize_attendance_session(
     lecture_no,
     teacher_id,
     lecture_start_time,
-    lecture_end_time
+    lecture_end_time,
+     is_extra_class
 ):
     if not os.path.exists(TRAINER_PATH):
         return {
@@ -269,8 +270,9 @@ def recognize_attendance_session(
                         lecture_end_time=lecture_end_time,
                         date=today,
                         time=current_time,
-                        status="Present"
-)
+                        status="Present",
+                        is_extra_class=is_extra_class
+                    )
 
                     db.session.add(attendance)
                     db.session.commit()

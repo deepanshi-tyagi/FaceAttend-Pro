@@ -66,6 +66,8 @@ class Attendance(db.Model):
     time = db.Column(db.String(20), nullable=False)
     status = db.Column(db.String(20), nullable=False, default="Present")
 
+    is_extra_class = db.Column(db.Boolean, default=False)
+
     lecture_start_time = db.Column(db.String(20), nullable=True)
     lecture_end_time = db.Column(db.String(20), nullable=True)
 

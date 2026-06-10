@@ -14,6 +14,7 @@ function TakeAttendance() {
     lecture_no: "Lecture 1",
     lecture_start_time: "",
     lecture_end_time: "",
+    is_extra_class: false,
 
   });
 
@@ -31,11 +32,13 @@ function TakeAttendance() {
   }, []);
 
   function handleChange(e) {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-  }
+  const { name, value, type, checked } = e.target;
+
+  setForm({
+    ...form,
+    [name]: type === "checkbox" ? checked : value,
+  });
+}
 
   async function handleStart(e) {
     e.preventDefault();
@@ -48,6 +51,7 @@ function TakeAttendance() {
       lecture_no: form.lecture_no,
       lecture_start_time: form.lecture_start_time,
       lecture_end_time: form.lecture_end_time,
+      is_extra_class: form.is_extra_class,
    });
 
       setMessage(response.data.message);
@@ -70,6 +74,7 @@ function TakeAttendance() {
      lecture_no: sessionInfo.lecture_no,
      lecture_start_time: sessionInfo.lecture_start_time,
      lecture_end_time: sessionInfo.lecture_end_time,
+     is_extra_class: sessionInfo.is_extra_class,
   });
     setMessage(
       `${response.data.message} Marked: ${response.data.marked_count}`
@@ -140,6 +145,15 @@ function TakeAttendance() {
               onChange={handleChange}
               required
              />
+             <label className="checkbox-row">
+              <input
+                type="checkbox"
+                name="is_extra_class"
+                checked={form.is_extra_class}
+                onChange={handleChange}
+              />
+              Mark as Extra Class
+            </label>
 
             <button type="submit" className="primary-btn">
               Start Attendance

@@ -921,3 +921,19 @@ body {
     align-items: flex-start;
   }
 }
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  padding: 14px 15px;
+  border-radius: 14px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.checkbox-row input {
+  width: 18px;
+  height: 18px;
+}
