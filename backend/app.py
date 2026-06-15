@@ -349,10 +349,45 @@ def dashboard():
     }), 403
 
 
+@app.route("/api/teachers", methods=["GET"])
+@jwt_required()
+def get_teachers():
+    claims = get_jwt()
+    role = claims.get("role")
+
+    if role != "admin":
+        return jsonify({
+            "success": False,
+            "message": "Admin access required."
+        }), 403
+
+    teachers = User.query.filter_by(role="teacher").order_by(User.id.desc()).all()
+
+    teacher_list = []
+
+    for teacher in teachers:
+        teacher_list.append({
+            "id": teacher.id,
+            "name": teacher.name,
+            "username": teacher.username,
+            "email": teacher.email,
+            "department": teacher.department,
+            "role": teacher.role
+        })
+
+    return jsonify({
+        "success": True,
+        "teachers": teacher_list
+    }), 200
+
+
 @app.route("/api/teachers", methods=["POST"])
 @jwt_required()
 def add_teacher():
-    if not require_admin():
+    claims = get_jwt()
+    role = claims.get("role")
+
+    if role != "admin":
         return jsonify({
             "success": False,
             "message": "Admin access required."
@@ -361,33 +396,31 @@ def add_teacher():
     data = request.get_json()
 
     name = data.get("name", "").strip()
-    email = data.get("email", "").strip()
     username = data.get("username", "").strip()
-    password = data.get("password", "").strip()
+    email = data.get("email", "").strip()
     department = data.get("department", "").strip()
+    password = data.get("password", "").strip()
 
-    if not name or not email or not username or not password:
+    if not name or not username or not password:
         return jsonify({
             "success": False,
-            "message": "Name, email, username, and password are required."
+            "message": "Name, username, and password are required."
         }), 400
 
-    existing_user = User.query.filter(
-        (User.email == email) | (User.username == username)
-    ).first()
+    existing_user = User.query.filter_by(username=username).first()
 
     if existing_user:
         return jsonify({
             "success": False,
-            "message": "Email or username already exists."
-        }), 409
+            "message": "Username already exists."
+        }), 400
 
     teacher = User(
-        role="teacher",
         name=name,
-        email=email,
         username=username,
-        department=department
+        email=email,
+        department=department,
+        role="teacher"
     )
 
     teacher.set_password(password)
@@ -397,16 +430,8 @@ def add_teacher():
 
     return jsonify({
         "success": True,
-        "message": "Teacher added successfully.",
-        "teacher": {
-            "id": teacher.id,
-            "name": teacher.name,
-            "email": teacher.email,
-            "username": teacher.username,
-            "department": teacher.department
-        }
+        "message": "Teacher added successfully."
     }), 201
-
 
 @app.route("/api/teachers/<int:teacher_id>", methods=["DELETE"])
 @jwt_required()
@@ -438,13 +463,23 @@ def delete_teacher(teacher_id):
 @app.route("/api/assignments", methods=["GET"])
 @jwt_required()
 def get_assignments():
-    if not require_admin():
+    claims = get_jwt()
+    role = claims.get("role")
+    user_id = int(get_jwt_identity())
+
+    if role == "admin":
+        assignments = TeacherAssignment.query.order_by(
+            TeacherAssignment.id.desc()
+        ).all()
+    elif role == "teacher":
+        assignments = TeacherAssignment.query.filter_by(
+            teacher_id=user_id
+        ).order_by(TeacherAssignment.id.desc()).all()
+    else:
         return jsonify({
             "success": False,
-            "message": "Admin access required."
+            "message": "Access denied."
         }), 403
-
-    assignments = TeacherAssignment.query.order_by(TeacherAssignment.id.desc()).all()
 
     assignment_list = []
 
@@ -455,7 +490,6 @@ def get_assignments():
             "id": assignment.id,
             "teacher_id": assignment.teacher_id,
             "teacher_name": teacher.name if teacher else "Unknown",
-            "teacher_username": teacher.username if teacher else "-",
             "subject": assignment.subject,
             "branch": assignment.branch,
             "section": assignment.section
@@ -465,7 +499,6 @@ def get_assignments():
         "success": True,
         "assignments": assignment_list
     }), 200
-
 
 @app.route("/api/assignments", methods=["POST"])
 @jwt_required()

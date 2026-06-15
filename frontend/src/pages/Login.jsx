@@ -126,22 +126,16 @@ function Login() {
           </form>
 
           <div className="credential-note">
-            {role === "admin" && (
-              <p>
-                Default admin credentials: <strong>admin / admin123</strong>
-              </p>
-            )}
+          {role === "admin" && <p>Sign in using your administrator account.</p>}
 
-            {role === "teacher" && (
-              <p>Use the credentials provided by the administrator.</p>
-            )}
+          {role === "teacher" && (
+            <p>Use the credentials provided by the administrator.</p>
+          )}
 
-            {role === "student" && (
-              <p>
-                Default student credentials: <strong>Student ID / Student ID</strong>
-              </p>
-            )}
-          </div>
+          {role === "student" && (
+            <p>Use your Student ID and assigned password to continue.</p>
+          )}
+        </div>
         </section>
       </div>
     </div>
