@@ -2,6 +2,16 @@ import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import api from "../api/axios";
 
+import { Doughnut } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+ChartJS.register(ArcElement, Tooltip, Legend);
+
 function AdminDashboard() {
   const user = JSON.parse(localStorage.getItem("user"));
 
@@ -9,20 +19,76 @@ function AdminDashboard() {
   const [recentAttendance, setRecentAttendance] = useState([]);
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
-
+ useEffect(() => {
+  fetchDashboard();
+  fetchTodayAttendance();
+}, []);
   async function fetchDashboard() {
-    try {
-      const response = await api.get("/api/dashboard");
+      try {
+        const response = await api.get("/api/dashboard");
 
-      setCards(response.data.cards || {});
-      setRecentAttendance(response.data.recent_attendance || []);
+        setCards(response.data.cards || {});
+        setRecentAttendance(response.data.recent_attendance || []);
+      } catch (error) {
+        setMessage("Unable to load dashboard data.");
+      }
+    }
+    const [todayStats, setTodayStats] = useState({
+        present: 0,
+        absent: 0,
+        notMarked: 0,
+      });
+
+      async function fetchTodayAttendance() {
+    try {
+      const response = await api.get("/api/today-attendance");
+      const records = response.data.attendance || [];
+
+      const present = records.filter(
+        (record) => record.status === "Present"
+      ).length;
+
+      const absent = records.filter(
+        (record) => record.status === "Absent"
+      ).length;
+
+      const notMarked = records.filter(
+        (record) => record.status === "Not Marked"
+      ).length;
+
+      setTodayStats({
+        present,
+        absent,
+        notMarked,
+      });
     } catch (error) {
-      setMessage("Unable to load dashboard data.");
+      console.log("Unable to load today attendance chart data.");
     }
   }
+  const attendanceChartData = {
+      labels: ["Present", "Absent", "Not Marked"],
+      datasets: [
+        {
+          data: [
+            todayStats.present,
+            todayStats.absent,
+            todayStats.notMarked,
+          ],
+          backgroundColor: ["#16a34a", "#dc2626", "#f59e0b"],
+          borderWidth: 0,
+        },
+      ],
+    };
+
+    const attendanceChartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "bottom",
+        },
+      },
+    };
 
   return (
     <Layout role={user?.role}>
@@ -78,6 +144,19 @@ function AdminDashboard() {
         <div className="card">
           <span>System Role</span>
           <h2>Admin</h2>
+        </div>
+      </div>
+
+      <div className="section-card chart-card">
+        <div className="table-header">
+          <div>
+            <h2>Today Attendance Overview</h2>
+            <p>Present vs Absent vs Not Marked attendance status for today.</p>
+          </div>
+        </div>
+
+        <div className="chart-wrapper">
+          <Doughnut data={attendanceChartData} options={attendanceChartOptions} />
         </div>
       </div>
 

@@ -1089,5 +1089,15 @@ body {
     grid-template-columns: 1fr;
   }
 }
+.chart-card {
+  margin-bottom: 26px;
+}
+
+.chart-wrapper {
+  height: 320px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 10px;
+}
 
 
