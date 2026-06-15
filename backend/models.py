@@ -39,7 +39,13 @@ class Student(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     attendance_records = db.relationship("Attendance", backref="student", lazy=True)
+    password_hash = db.Column(db.String(255), nullable=True)
 
+    def set_password(self, password):
+     self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+     return check_password_hash(self.password_hash, password)
 
 class TeacherAssignment(db.Model):
     __tablename__ = "teacher_assignments"

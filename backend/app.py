@@ -79,7 +79,6 @@ def setup_database():
         "message": "Database setup completed successfully."
     })
 
-
 @app.route("/api/login", methods=["POST"])
 def login():
     data = request.get_json()
@@ -90,9 +89,9 @@ def login():
             "message": "Invalid request."
         }), 400
 
-    role = data.get("role")
-    username = data.get("username")
-    password = data.get("password")
+    role = data.get("role", "").strip().lower()
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
 
     if not role or not username or not password:
         return jsonify({
@@ -100,6 +99,55 @@ def login():
             "message": "Role, username, and password are required."
         }), 400
 
+    # STUDENT LOGIN
+    if role == "student":
+        student = Student.query.filter_by(student_id=username).first()
+
+        if not student:
+            return jsonify({
+                "success": False,
+                "message": "Student ID not found."
+            }), 401
+
+        if not student.password_hash:
+            return jsonify({
+                "success": False,
+                "message": "Student password is not set. Please reset student passwords."
+            }), 401
+
+        if not student.check_password(password):
+            return jsonify({
+                "success": False,
+                "message": "Invalid student password."
+            }), 401
+
+        access_token = create_access_token(
+            identity=str(student.id),
+            additional_claims={
+                "role": "student",
+                "student_id": student.student_id,
+                "name": student.name
+            }
+        )
+
+        return jsonify({
+            "success": True,
+            "message": "Student login successful.",
+            "token": access_token,
+            "user": {
+                "id": student.id,
+                "role": "student",
+                "name": student.name,
+                "username": student.student_id,
+                "student_id": student.student_id,
+                "branch": student.branch,
+                "section": student.section,
+                "email": student.email,
+                "phone": student.phone
+            }
+        }), 200
+
+    # ADMIN / TEACHER LOGIN
     user = User.query.filter_by(username=username, role=role).first()
 
     if not user or not user.check_password(password):
@@ -130,7 +178,6 @@ def login():
             "department": user.department
         }
     }), 200
-
 
 @app.route("/api/me", methods=["GET"])
 @jwt_required()
@@ -644,6 +691,8 @@ def add_student():
         email=email,
         phone=phone
     )
+
+    student.set_password(student_id)
 
     db.session.add(student)
     db.session.commit()
@@ -1439,7 +1488,9 @@ def update_teacher(teacher_id):
 @app.route("/api/change-password", methods=["PUT"])
 @jwt_required()
 def change_password():
-    user_id = int(get_jwt_identity())
+    identity_id = int(get_jwt_identity())
+    claims = get_jwt()
+    role = claims.get("role")
 
     data = request.get_json()
 
@@ -1465,27 +1516,57 @@ def change_password():
             "message": "New password must be at least 6 characters long."
         }), 400
 
-    user = User.query.get(user_id)
+    if role == "student":
+        student_id = claims.get("student_id")
+        student = Student.query.filter_by(student_id=student_id).first()
 
-    if not user:
+        if not student:
+            return jsonify({
+                "success": False,
+                "message": "Student not found."
+            }), 404
+
+        if not student.check_password(old_password):
+            return jsonify({
+                "success": False,
+                "message": "Old password is incorrect."
+            }), 401
+
+        student.set_password(new_password)
+        db.session.commit()
+
         return jsonify({
-            "success": False,
-            "message": "User not found."
-        }), 404
+            "success": True,
+            "message": "Password changed successfully. Please login again."
+        }), 200
 
-    if not user.check_password(old_password):
+    if role in ["admin", "teacher"]:
+        user = User.query.get(identity_id)
+
+        if not user:
+            return jsonify({
+                "success": False,
+                "message": "User not found."
+            }), 404
+
+        if not user.check_password(old_password):
+            return jsonify({
+                "success": False,
+                "message": "Old password is incorrect."
+            }), 401
+
+        user.set_password(new_password)
+        db.session.commit()
+
         return jsonify({
-            "success": False,
-            "message": "Old password is incorrect."
-        }), 401
-
-    user.set_password(new_password)
-    db.session.commit()
+            "success": True,
+            "message": "Password changed successfully. Please login again."
+        }), 200
 
     return jsonify({
-        "success": True,
-        "message": "Password changed successfully. Please login again."
-    }), 200
+        "success": False,
+        "message": "Invalid role."
+    }), 403
 
 @app.route("/api/attendance/<int:attendance_id>/status", methods=["PUT"])
 @jwt_required()
@@ -1655,11 +1736,110 @@ def get_today_attendance():
         "date": today,
         "attendance": result
     }), 200
+def migrate_student_password_column():
+    with db.engine.connect() as connection:
+        columns = connection.execute(text("PRAGMA table_info(students)")).fetchall()
+        column_names = [column[1] for column in columns]
+
+        if "password_hash" not in column_names:
+            connection.execute(text("ALTER TABLE students ADD COLUMN password_hash VARCHAR(255)"))
+            print("Added password_hash column to students.")
+
+        connection.commit()
+
+
+def set_default_student_passwords():
+    students = Student.query.all()
+
+    for student in students:
+        if not student.password_hash:
+            student.set_password(student.student_id)
+
+    db.session.commit()
+    print("Default passwords set for students without password.")
+
+@app.route("/api/student/my-attendance", methods=["GET"])
+@jwt_required()
+def get_my_student_attendance():
+    claims = get_jwt()
+    role = claims.get("role")
+
+    if role != "student":
+        return jsonify({
+            "success": False,
+            "message": "Student access required."
+        }), 403
+
+    student_id = claims.get("student_id")
+
+    student = Student.query.filter_by(student_id=student_id).first()
+
+    if not student:
+        return jsonify({
+            "success": False,
+            "message": "Student not found."
+        }), 404
+
+    records = Attendance.query.filter_by(
+        student_id=student_id
+    ).order_by(Attendance.date.desc(), Attendance.id.desc()).all()
+
+    attendance_list = []
+
+    present_count = 0
+    absent_count = 0
+
+    for record in records:
+        teacher = User.query.get(record.teacher_id)
+
+        if record.status == "Present":
+            present_count += 1
+
+        if record.status == "Absent":
+            absent_count += 1
+
+        attendance_list.append({
+            "id": record.id,
+            "subject": record.subject,
+            "lecture_no": record.lecture_no,
+            "lecture_start_time": record.lecture_start_time,
+            "lecture_end_time": record.lecture_end_time,
+            "is_extra_class": record.is_extra_class,
+            "date": record.date,
+            "time": record.time,
+            "status": record.status,
+            "teacher_name": teacher.name if teacher else "-"
+        })
+
+    total_count = present_count + absent_count
+
+    percentage = round((present_count / total_count) * 100, 2) if total_count > 0 else 0
+
+    return jsonify({
+        "success": True,
+        "student": {
+            "student_id": student.student_id,
+            "name": student.name,
+            "branch": student.branch,
+            "section": student.section,
+            "email": student.email,
+            "phone": student.phone
+        },
+        "summary": {
+            "present": present_count,
+            "absent": absent_count,
+            "total": total_count,
+            "percentage": percentage
+        },
+        "attendance": attendance_list
+    }), 200
 
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
         create_default_admin()
         migrate_attendance_time_columns()
+        migrate_student_password_column()
+        set_default_student_passwords()
 
     app.run(debug=True, host="127.0.0.1", port=5000)

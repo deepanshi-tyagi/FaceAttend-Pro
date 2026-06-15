@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import TeacherDashboard from "./pages/TeacherDashboard";
+import StudentDashboard from "./pages/StudentDashboard";
+
 import Teachers from "./pages/Teachers";
 import Assignments from "./pages/Assignments";
 import Students from "./pages/Students";
@@ -20,6 +22,18 @@ function ProtectedRoute({ children, allowedRole }) {
   }
 
   if (allowedRole && user.role !== allowedRole) {
+    if (user.role === "admin") {
+      return <Navigate to="/admin" replace />;
+    }
+
+    if (user.role === "teacher") {
+      return <Navigate to="/teacher" replace />;
+    }
+
+    if (user.role === "student") {
+      return <Navigate to="/student" replace />;
+    }
+
     return <Navigate to="/" replace />;
   }
 
@@ -51,6 +65,15 @@ function App() {
         />
 
         <Route
+          path="/student"
+          element={
+            <ProtectedRoute allowedRole="student">
+              <StudentDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/teachers"
           element={
             <ProtectedRoute allowedRole="admin">
@@ -71,17 +94,8 @@ function App() {
         <Route
           path="/students"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRole="admin">
               <Students />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/take-attendance"
-          element={
-            <ProtectedRoute>
-              <TakeAttendance />
             </ProtectedRoute>
           }
         />
@@ -91,6 +105,15 @@ function App() {
           element={
             <ProtectedRoute>
               <Attendance />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/take-attendance"
+          element={
+            <ProtectedRoute>
+              <TakeAttendance />
             </ProtectedRoute>
           }
         />
@@ -108,10 +131,11 @@ function App() {
           path="/change-password"
           element={
             <ProtectedRoute>
-             <ChangePassword />
+              <ChangePassword />
             </ProtectedRoute>
-           }
-       />
+          }
+        />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
