@@ -19,27 +19,30 @@ function AdminDashboard() {
   const [recentAttendance, setRecentAttendance] = useState([]);
   const [message, setMessage] = useState("");
 
- useEffect(() => {
-  fetchDashboard();
-  fetchTodayAttendance();
-}, []);
+  const [todayStats, setTodayStats] = useState({
+    present: 0,
+    absent: 0,
+    notMarked: 0,
+  });
+
+  useEffect(() => {
+    fetchDashboard();
+    fetchTodayAttendance();
+  }, []);
+
   async function fetchDashboard() {
-      try {
-        const response = await api.get("/api/dashboard");
+    try {
+      const response = await api.get("/api/dashboard");
 
-        setCards(response.data.cards || {});
-        setRecentAttendance(response.data.recent_attendance || []);
-      } catch (error) {
-        setMessage("Unable to load dashboard data.");
-      }
+      setCards(response.data.cards || {});
+      setRecentAttendance(response.data.recent_attendance || []);
+      setMessage("");
+    } catch (error) {
+      setMessage("Unable to load dashboard data.");
     }
-    const [todayStats, setTodayStats] = useState({
-        present: 0,
-        absent: 0,
-        notMarked: 0,
-      });
+  }
 
-      async function fetchTodayAttendance() {
+  async function fetchTodayAttendance() {
     try {
       const response = await api.get("/api/today-attendance");
       const records = response.data.attendance || [];
@@ -65,30 +68,32 @@ function AdminDashboard() {
       console.log("Unable to load today attendance chart data.");
     }
   }
-  const attendanceChartData = {
-      labels: ["Present", "Absent", "Not Marked"],
-      datasets: [
-        {
-          data: [
-            todayStats.present,
-            todayStats.absent,
-            todayStats.notMarked,
-          ],
-          backgroundColor: ["#16a34a", "#dc2626", "#f59e0b"],
-          borderWidth: 0,
-        },
-      ],
-    };
 
-    const attendanceChartOptions = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: "bottom",
-        },
+  async function handleRefreshDashboard() {
+    await fetchDashboard();
+    await fetchTodayAttendance();
+  }
+
+  const attendanceChartData = {
+    labels: ["Present", "Absent", "Not Marked"],
+    datasets: [
+      {
+        data: [todayStats.present, todayStats.absent, todayStats.notMarked],
+        backgroundColor: ["#16a34a", "#dc2626", "#f59e0b"],
+        borderWidth: 0,
       },
-    };
+    ],
+  };
+
+  const attendanceChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "bottom",
+      },
+    },
+  };
 
   return (
     <Layout role={user?.role}>
@@ -153,6 +158,10 @@ function AdminDashboard() {
             <h2>Today Attendance Overview</h2>
             <p>Present vs Absent vs Not Marked attendance status for today.</p>
           </div>
+
+          <button className="secondary-btn" onClick={handleRefreshDashboard}>
+            Refresh
+          </button>
         </div>
 
         <div className="chart-wrapper">
@@ -167,6 +176,10 @@ function AdminDashboard() {
               <h2>Recent Attendance</h2>
               <p>Latest attendance activity across all classes.</p>
             </div>
+
+            <button className="secondary-btn" onClick={handleRefreshDashboard}>
+              Refresh
+            </button>
           </div>
 
           {recentAttendance.length === 0 ? (
@@ -209,8 +222,10 @@ function AdminDashboard() {
                       <td>
                         {record.status === "Present" ? (
                           <span className="badge-good">Present</span>
-                        ) : (
+                        ) : record.status === "Absent" ? (
                           <span className="badge-low">Absent</span>
+                        ) : (
+                          <span className="badge-warning">Not Marked</span>
                         )}
                       </td>
 

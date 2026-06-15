@@ -158,7 +158,6 @@ def me():
         }
     }), 200
 
-
 @app.route("/api/dashboard", methods=["GET"])
 @jwt_required()
 def dashboard():
@@ -166,11 +165,49 @@ def dashboard():
     claims = get_jwt()
     role = claims.get("role")
 
+    from datetime import datetime
+    today = datetime.now().strftime("%Y-%m-%d")
+
     if role == "admin":
         total_students = Student.query.count()
         total_teachers = User.query.filter_by(role="teacher").count()
         total_assignments = TeacherAssignment.query.count()
         total_attendance = Attendance.query.count()
+
+        present_today = Attendance.query.filter_by(
+            date=today,
+            status="Present"
+        ).count()
+
+        absent_today = Attendance.query.filter_by(
+            date=today,
+            status="Absent"
+        ).count()
+
+        recent_records = Attendance.query.order_by(
+            Attendance.id.desc()
+        ).limit(8).all()
+
+        recent_attendance = []
+
+        for record in recent_records:
+            student = Student.query.filter_by(
+                student_id=record.student_id
+            ).first()
+
+            teacher = User.query.get(record.teacher_id)
+
+            recent_attendance.append({
+                "id": record.id,
+                "student_name": student.name if student else "Unknown",
+                "student_id": record.student_id,
+                "subject": record.subject,
+                "lecture_no": record.lecture_no,
+                "date": record.date,
+                "time": record.time,
+                "status": record.status,
+                "teacher_name": teacher.name if teacher else "-"
+            })
 
         return jsonify({
             "success": True,
@@ -179,14 +216,22 @@ def dashboard():
                 "total_students": total_students,
                 "total_teachers": total_teachers,
                 "total_assignments": total_assignments,
-                "total_attendance": total_attendance
-            }
-        })
+                "total_attendance": total_attendance,
+                "present_today": present_today,
+                "absent_today": absent_today,
+                "recent_count": len(recent_attendance)
+            },
+            "recent_attendance": recent_attendance
+        }), 200
 
-    if role == "teacher":
-        assigned_classes = TeacherAssignment.query.filter_by(teacher_id=user_id).count()
+    elif role == "teacher":
+        assigned_classes = TeacherAssignment.query.filter_by(
+            teacher_id=user_id
+        ).count()
 
-        assignments = TeacherAssignment.query.filter_by(teacher_id=user_id).all()
+        assignments = TeacherAssignment.query.filter_by(
+            teacher_id=user_id
+        ).all()
 
         assigned_students_set = set()
 
@@ -199,7 +244,43 @@ def dashboard():
             for student in students:
                 assigned_students_set.add(student.student_id)
 
-        total_attendance = Attendance.query.filter_by(teacher_id=user_id).count()
+        total_attendance = Attendance.query.filter_by(
+            teacher_id=user_id
+        ).count()
+
+        present_today = Attendance.query.filter_by(
+            teacher_id=user_id,
+            date=today,
+            status="Present"
+        ).count()
+
+        absent_today = Attendance.query.filter_by(
+            teacher_id=user_id,
+            date=today,
+            status="Absent"
+        ).count()
+
+        recent_records = Attendance.query.filter_by(
+            teacher_id=user_id
+        ).order_by(Attendance.id.desc()).limit(8).all()
+
+        recent_attendance = []
+
+        for record in recent_records:
+            student = Student.query.filter_by(
+                student_id=record.student_id
+            ).first()
+
+            recent_attendance.append({
+                "id": record.id,
+                "student_name": student.name if student else "Unknown",
+                "student_id": record.student_id,
+                "subject": record.subject,
+                "lecture_no": record.lecture_no,
+                "date": record.date,
+                "time": record.time,
+                "status": record.status
+            })
 
         return jsonify({
             "success": True,
@@ -207,45 +288,18 @@ def dashboard():
             "cards": {
                 "assigned_classes": assigned_classes,
                 "assigned_students": len(assigned_students_set),
-                "total_attendance": total_attendance
-            }
-        })
+                "total_attendance": total_attendance,
+                "present_today": present_today,
+                "absent_today": absent_today,
+                "recent_count": len(recent_attendance)
+            },
+            "recent_attendance": recent_attendance
+        }), 200
 
     return jsonify({
         "success": False,
         "message": "Invalid role."
-    }), 400
-
-def require_admin():
-    claims = get_jwt()
-    return claims.get("role") == "admin"
-
-@app.route("/api/teachers", methods=["GET"])
-@jwt_required()
-def get_teachers():
-    if not require_admin():
-        return jsonify({
-            "success": False,
-            "message": "Admin access required."
-        }), 403
-
-    teachers = User.query.filter_by(role="teacher").order_by(User.id.desc()).all()
-
-    teacher_list = []
-
-    for teacher in teachers:
-        teacher_list.append({
-            "id": teacher.id,
-            "name": teacher.name,
-            "email": teacher.email,
-            "username": teacher.username,
-            "department": teacher.department
-        })
-
-    return jsonify({
-        "success": True,
-        "teachers": teacher_list
-    }), 200
+    }), 403
 
 
 @app.route("/api/teachers", methods=["POST"])
