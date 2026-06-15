@@ -1035,5 +1035,59 @@ body {
 .attendance-summary-grid .card h2 {
   font-size: 34px;
 }
+.dashboard-hero {
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-card-grid {
+  margin-bottom: 24px;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 26px;
+  align-items: start;
+}
+
+.dashboard-info-card {
+  min-height: 100%;
+}
+
+.overview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.overview-list div {
+  padding: 16px;
+  border-radius: 18px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.overview-list span {
+  display: block;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 7px;
+}
+
+.overview-list strong {
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 
