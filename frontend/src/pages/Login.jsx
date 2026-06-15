@@ -49,81 +49,37 @@ function Login() {
   }
 
   return (
-    <div className="auth-page">
-      <div className="auth-background-blur auth-blur-one"></div>
-      <div className="auth-background-blur auth-blur-two"></div>
+    <div className="professional-login-page">
+      <div className="professional-login-container">
+        <section className="professional-login-brand">
+          <div className="brand-mark">FaceAttend-Pro</div>
 
-      <div className="auth-container">
-        <section className="auth-brand-panel">
-          <div className="auth-brand-top">
-            <div className="auth-logo">FA</div>
-            <div>
-              <h1>FaceAttend-Pro</h1>
-              <p>Smart AI Attendance Platform</p>
-            </div>
-          </div>
-
-          <div className="auth-hero-content">
-            <span>AI-Based Attendance Management</span>
-            <h2>Secure attendance tracking for modern classrooms.</h2>
+          <div className="brand-content">
+            <h1>Attendance Management System</h1>
             <p>
-              Manage students, teachers, timetable-based attendance, manual
-              fallback, reports, and student calendar views from one system.
+              Secure role-based attendance tracking for administrators,
+              teachers, and students.
             </p>
           </div>
 
-          <div className="auth-stats">
-            <div>
-              <strong>3</strong>
-              <span>Role Portals</span>
-            </div>
-
-            <div>
-              <strong>AI</strong>
-              <span>Face Recognition</span>
-            </div>
-
-            <div>
-              <strong>PDF</strong>
-              <span>Reports</span>
-            </div>
-          </div>
-
-          <div className="auth-feature-grid">
-            <div>
-              <b>Face Recognition</b>
-              <span>Camera-based attendance marking</span>
-            </div>
-
-            <div>
-              <b>Manual Backup</b>
-              <span>Fallback attendance for edge cases</span>
-            </div>
-
-            <div>
-              <b>Student Calendar</b>
-              <span>Daily attendance visibility</span>
-            </div>
-
-            <div>
-              <b>Role Security</b>
-              <span>Admin, teacher, and student access</span>
-            </div>
+          <div className="brand-footer">
+            <span>Face Recognition</span>
+            <span>Manual Attendance</span>
+            <span>Reports</span>
           </div>
         </section>
 
-        <section className="auth-card">
-          <div className="auth-card-header">
-            <span>Welcome Back</span>
-            <h2>Sign in to your account</h2>
-            <p>Select your role and continue to your dashboard.</p>
+        <section className="professional-login-card">
+          <div className="login-title-block">
+            <h2>Sign in</h2>
+            <p>Access your dashboard using your assigned credentials.</p>
           </div>
 
-          {message && <div className="auth-alert">{message}</div>}
+          {message && <div className="professional-login-alert">{message}</div>}
 
-          <form onSubmit={handleLogin} autoComplete="off" className="auth-form">
-            <div className="auth-field">
-              <label>Login Role</label>
+          <form onSubmit={handleLogin} autoComplete="off" className="professional-login-form">
+            <div className="professional-field">
+              <label>Role</label>
               <select
                 value={role}
                 onChange={(e) => {
@@ -140,13 +96,11 @@ function Login() {
               </select>
             </div>
 
-            <div className="auth-field">
+            <div className="professional-field">
               <label>{role === "student" ? "Student ID" : "Username"}</label>
               <input
                 type="text"
-                placeholder={
-                  role === "student" ? "Enter Student ID" : "Enter Username"
-                }
+                placeholder={role === "student" ? "Enter student ID" : "Enter username"}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="off"
@@ -154,15 +108,11 @@ function Login() {
               />
             </div>
 
-            <div className="auth-field">
+            <div className="professional-field">
               <label>Password</label>
               <input
                 type="password"
-                placeholder={
-                  role === "student"
-                    ? "Default password is Student ID"
-                    : "Enter Password"
-                }
+                placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
@@ -170,31 +120,26 @@ function Login() {
               />
             </div>
 
-            <button type="submit" className="auth-submit-btn">
-              Sign In
+            <button type="submit" className="professional-login-button">
+              Continue
             </button>
           </form>
 
-          <div className="auth-helper-card">
+          <div className="credential-note">
             {role === "admin" && (
-              <>
-                <span>Default Admin Login</span>
-                <strong>admin / admin123</strong>
-              </>
+              <p>
+                Default admin credentials: <strong>admin / admin123</strong>
+              </p>
             )}
 
             {role === "teacher" && (
-              <>
-                <span>Teacher Login</span>
-                <strong>Use credentials created by Admin</strong>
-              </>
+              <p>Use the credentials provided by the administrator.</p>
             )}
 
             {role === "student" && (
-              <>
-                <span>Student Login</span>
-                <strong>Student ID / Student ID</strong>
-              </>
+              <p>
+                Default student credentials: <strong>Student ID / Student ID</strong>
+              </p>
             )}
           </div>
         </section>
